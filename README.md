@@ -40,7 +40,7 @@ High-performance data migration tool for extracting and transforming data from D
 ### Build from Source
 
 ```bash
-git clone https://github.com/yourusername/django-to-go-migrator.git
+git clone https://github.com/RoomiestThunder/django-to-go-migrator.git
 cd django-to-go-migrator
 go mod download
 make build
