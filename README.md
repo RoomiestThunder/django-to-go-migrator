@@ -1,5 +1,7 @@
 # Django to Go Migrator
 
+[![CI](https://github.com/RoomiestThunder/django-to-go-migrator/actions/workflows/ci.yml/badge.svg)](https://github.com/RoomiestThunder/django-to-go-migrator/actions/workflows/ci.yml)
+
 High-performance data migration tool for extracting and transforming data from Django-backed databases (PostgreSQL/MySQL) into structured formats suitable for Go applications. Leverages Go's concurrency primitives (goroutines and channels) to achieve significant performance improvements over traditional Python-based migration tools.
 
 ## Features
