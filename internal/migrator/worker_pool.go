@@ -26,6 +26,7 @@ type WorkerPool struct {
 	cancel      context.CancelFunc
 	processFunc ProcessFunc
 	errorsChan  chan error
+	closeOnce   sync.Once
 }
 
 // NewWorkerPool creates a new worker pool
@@ -68,7 +69,7 @@ func (wp *WorkerPool) Submit(job interface{}) error {
 
 // Wait waits for all tasks to complete
 func (wp *WorkerPool) Wait() []error {
-	close(wp.jobsChan)
+	wp.closeOnce.Do(func() { close(wp.jobsChan) })
 	wp.wg.Wait()
 	wp.cancel()
 
@@ -82,10 +83,10 @@ func (wp *WorkerPool) Wait() []error {
 	return errors
 }
 
-// Stop stops the worker pool
+// Stop cancels the pool and drains any pending jobs.
 func (wp *WorkerPool) Stop() {
 	wp.cancel()
-	close(wp.jobsChan)
+	wp.closeOnce.Do(func() { close(wp.jobsChan) })
 }
 
 // start runs the worker

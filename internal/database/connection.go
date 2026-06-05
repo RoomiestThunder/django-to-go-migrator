@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"sync"
+	"unicode"
 
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
@@ -87,8 +88,24 @@ func (cp *ConnectionPool) Close() error {
 	return nil
 }
 
+// ValidateTableName returns an error if the name contains characters outside [A-Za-z0-9_].
+func ValidateTableName(name string) error {
+	if name == "" {
+		return fmt.Errorf("table name cannot be empty")
+	}
+	for _, c := range name {
+		if !unicode.IsLetter(c) && !unicode.IsDigit(c) && c != '_' {
+			return fmt.Errorf("invalid table name %q: only letters, digits, and underscores are allowed", name)
+		}
+	}
+	return nil
+}
+
 // GetTableCount returns the number of rows in a table
 func (cp *ConnectionPool) GetTableCount(tableName string) (int64, error) {
+	if err := ValidateTableName(tableName); err != nil {
+		return 0, err
+	}
 	var count int64
 	query := fmt.Sprintf("SELECT COUNT(*) FROM %s", tableName)
 	err := cp.DB.QueryRow(query).Scan(&count)

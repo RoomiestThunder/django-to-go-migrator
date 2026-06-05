@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -59,7 +61,7 @@ func NewDataProcessor(
 
 // MigrateTable migrates a single table
 func (dp *DataProcessor) MigrateTable(ctx context.Context, tableName string) error {
-	log.Printf("🔄 Starting migration of table: %s", tableName)
+	log.Printf("starting migration of table: %s", tableName)
 
 	tableMigrator := &TableMigrator{
 		name:      tableName,
@@ -74,7 +76,7 @@ func (dp *DataProcessor) MigrateTable(ctx context.Context, tableName string) err
 	}
 
 	tableMigrator.totalRows = totalRows
-	log.Printf("   📊 Total rows in %s: %d", tableName, totalRows)
+	log.Printf("  total rows in %s: %d", tableName, totalRows)
 
 	// Create worker pool
 	processor := NewStreamProcessor(dp.numWorkers, dp.batchSize,
@@ -127,7 +129,7 @@ func (dp *DataProcessor) MigrateTable(ctx context.Context, tableName string) err
 	dp.results[tableName] = result
 	dp.resultsMutex.Unlock()
 
-	log.Printf("✅ Migration of %s completed in %v (%.0f rows/sec)",
+	log.Printf("migration of %s completed in %v (%.0f rows/sec)",
 		tableName, duration, result.RowsPerSecond)
 
 	return nil
@@ -135,6 +137,9 @@ func (dp *DataProcessor) MigrateTable(ctx context.Context, tableName string) err
 
 // readTableBatch reads a batch of data from a table
 func (dp *DataProcessor) readTableBatch(tableName string, offset, limit int64) ([]interface{}, error) {
+	if err := database.ValidateTableName(tableName); err != nil {
+		return nil, err
+	}
 	query := fmt.Sprintf(
 		"SELECT * FROM %s ORDER BY id LIMIT %d OFFSET %d",
 		tableName, limit, offset,
@@ -254,14 +259,21 @@ func (dp *DataProcessor) GetReport(source string) *models.MigrationReport {
 	}
 }
 
-// ExportJSON exports the report to JSON
-func ExportJSON(report *models.MigrationReport, filepath string) error {
+// ExportJSON writes the migration report to a JSON file.
+func ExportJSON(report *models.MigrationReport, outputPath string) error {
 	data, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
-		return fmt.Errorf("error serializing JSON: %w", err)
+		return fmt.Errorf("marshal report: %w", err)
 	}
 
-	// In a real application, this would write to a file
-	log.Printf("📄 JSON report:\n%s", string(data))
+	if err := os.MkdirAll(filepath.Dir(outputPath), 0o755); err != nil {
+		return fmt.Errorf("create output directory: %w", err)
+	}
+
+	if err := os.WriteFile(outputPath, data, 0o644); err != nil {
+		return fmt.Errorf("write report: %w", err)
+	}
+
+	log.Printf("report exported to %s (%d bytes)", outputPath, len(data))
 	return nil
 }
